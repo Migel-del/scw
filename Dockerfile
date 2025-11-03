@@ -3,24 +3,17 @@ FROM nginx:alpine
 # Удаляем дефолтный конфиг
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Устанавливаем fcgiwrap и bash
-RUN apk add --no-cache fcgiwrap bash
-
-# Создаем скрипт для вывода Hostname и IP
+# Создаём простую страницу info с динамическими данными
 RUN mkdir -p /usr/share/nginx/html && \
-    echo '#!/bin/sh' > /usr/share/nginx/html/info.sh && \
-    echo 'echo "Content-Type: text/plain"' >> /usr/share/nginx/html/info.sh && \
-    echo 'echo ""' >> /usr/share/nginx/html/info.sh && \
-    echo 'echo "Hostname: $(hostname)"' >> /usr/share/nginx/html/info.sh && \
-    echo 'echo "IP: $(hostname -I | awk \x27{print $1}\x27)"' >> /usr/share/nginx/html/info.sh && \
-    chmod +x /usr/share/nginx/html/info.sh
+    echo 'Hostname: $HOSTNAME\nIP: $(hostname -i)\n' > /usr/share/nginx/html/info.template
 
-# Копируем конфиги nginx
+# Копируем конфиги
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx2.conf /etc/nginx/nginx.conf
 
-# --- Исправленный CMD ---
-# fcgiwrap запускается в фоне, затем nginx остаётся в foreground
-CMD fcgiwrap -s unix:/var/run/fcgiwrap.sock & nginx -g 'daemon off;'
+# При старте подставляем реальные значения в info.html и запускаем nginx
+CMD sh -c "echo \"Hostname: $(hostname)\" > /usr/share/nginx/html/info && \
+            echo \"IP: $(hostname -i)\" >> /usr/share/nginx/html/info && \
+            nginx -g 'daemon off;'"
 
 EXPOSE 8080

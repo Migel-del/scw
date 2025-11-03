@@ -3,10 +3,10 @@ FROM nginx:alpine
 # Удаляем дефолтный конфиг
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Устанавливаем fcgiwrap и утилиты
-RUN apk add --no-cache fcgiwrap spawn-fcgi bash
+# Устанавливаем fcgiwrap и bash
+RUN apk add --no-cache fcgiwrap bash
 
-# Создаем скрипт, который возвращает hostname и IP
+# Создаем скрипт для вывода Hostname и IP
 RUN mkdir -p /usr/share/nginx/html && \
     echo '#!/bin/sh' > /usr/share/nginx/html/info.sh && \
     echo 'echo "Content-Type: text/plain"' >> /usr/share/nginx/html/info.sh && \
@@ -19,7 +19,8 @@ RUN mkdir -p /usr/share/nginx/html && \
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx2.conf /etc/nginx/nginx.conf
 
-# Запускаем fcgiwrap и nginx
-CMD spawn-fcgi -s /var/run/fcgiwrap.sock -M 766 /usr/bin/fcgiwrap && nginx -g 'daemon off;'
+# --- Исправленный CMD ---
+# fcgiwrap запускается в фоне, затем nginx остаётся в foreground
+CMD fcgiwrap -s unix:/var/run/fcgiwrap.sock & nginx -g 'daemon off;'
 
 EXPOSE 8080
